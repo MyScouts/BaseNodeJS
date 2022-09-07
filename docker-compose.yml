@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # APP BASE
+  node-api-base:
+    build:
+      context: .
+      dockerfile: ./dockers/dockerfile.dev
+    ports:
+      - '${PORT}:${PORT}'
+    restart: on-failure
+    container_name: pet_care_coint
+    depends_on:
+      - database
+      - redis
+    volumes:
+      - ./src:/app/src
+    networks:
+      - mynetwork
+
+  # MYSQL
+  database:
+    image: mysql:8.0.30
+    restart: always
+    ports:
+      - '${TYPEORM_PORT}:${TYPEORM_PORT}'
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: "${TYPEORM_PASSWORD}"
+      MYSQL_USER: "${TYPEORM_USERNAME}"
+      MYSQL_PASSWORD: "${TYPEORM_PASSWORD}"
+      MYSQL_DATABASE: "${TYPEORM_DATABASE}"
+    volumes:
+      # - ./docker_database_init.sql:/docker-entrypoint-initdb.d/docker_database_init.sql
+      - myapp_mysql_data:/var/lib/mysql
+    networks:
+      - mynetwork
+
+  # PHP MYADMIN
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    depends_on:
+      - database
+    links:
+      - database
+    ports:
+      - 8081:80
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - mynetwork
+
+  # REDIS
+  redis:
+    image: redis:latest
+    command: "redis-server --requirepass ${REDIS_PASSWORD}"
+    ports:
+      - '${REDIS_PORT}:${REDIS_PORT}'
+    networks:
+      - mynetwork
+
+volumes:
+  myapp_mysql_data:
+
+
+networks:
+  mynetwork:
+    name: mynetwork
+    driver: bridge
